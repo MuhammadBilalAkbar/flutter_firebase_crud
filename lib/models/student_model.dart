@@ -13,17 +13,21 @@ class Student {
     required this.birthday,
   });
 
-  Map<String, dynamic> toJson() => {
-        'id': id,
-        'name': name,
-        'age': age,
-        'birthday': birthday,
-      };
+  Map<String, dynamic> toJson() {
+    return {
+      'id': id,
+      'name': name,
+      'age': age,
+      'birthday': birthday,
+    };
+  }
 
-  static Student fromJson(Map<String, dynamic> json) => Student(
-        id: json['id'],
-        name: json['name'],
-        age: json['age'],
-        birthday: (json['birthday'] as Timestamp).toDate(),
-      );
+  factory Student.fromJson(String id, Map<String, dynamic> json) {
+    return Student(
+      id: id,
+      name: json['name'],
+      age: json['age'],
+      birthday: (json['birthday'] as Timestamp).toDate(),
+    );
+  }
 }

@@ -214,28 +214,13 @@ link: https://stackoverflow.com/questions/53517382/query-a-single-document-from-
 
 **Problems from Flutter Stackoverflow**
 
-- https://stackoverflow.com/questions/74368655/how-do-i-properly-catch-errors-when-doing-crud-operations-on-firebase
-- https://stackoverflow.com/questions/76579713/how-to-update-the-data-from-firebase-firestore-and-display-back-to-the-view
-- https://stackoverflow.com/questions/60852106/crud-flutter-firestore-firebase
-- https://stackoverflow.com/questions/74568204/crud-app-with-firebase-conncetion-flutter
-- https://stackoverflow.com/questions/62978161/permission-denied-using-firebase-database-with-flutter
-- https://stackoverflow.com/questions/64946592/error-while-fetching-data-from-firestore-using-flutter
-- https://stackoverflow.com/questions/70450194/firebase-doesnt-work-cause-of-null-safety-dart-flutter
 - https://stackoverflow.com/questions/69692070/cant-link-flutter-web-application-to-firebase-project-infinite-loading
-- https://stackoverflow.com/questions/67656774/how-to-prevent-data-rewrite-in-cloud-firestore-flutter
 - https://stackoverflow.com/questions/66758902/delete-data-from-firebase-by-id-using-flutter
-- https://stackoverflow.com/questions/70223623/firebase-firestore-read-operation-very-high
 - https://stackoverflow.com/questions/56012131/flutter-firestore-check-if-document-id-already-exists
-- https://stackoverflow.com/questions/67328327/i-am-not-able-to-retrieve-data-from-firebase-database-in-my-flutter-app-i-dont
-- https://stackoverflow.com/questions/53215702/what-is-the-recommended-way-to-apply-crud-operations-to-a-document-in-cloud-fire
-- https://stackoverflow.com/questions/66241550/update-document-value-in-firestore-cloud-with-flutter-having-only-a-unique-key
 - https://stackoverflow.com/questions/70404936/missing-firebase-options-dart-file-in-course-get-to-know-firebase-for-flutter
-- https://stackoverflow.com/questions/62368722/your-cloud-firestore-database-has-insecure-rules-flutter-firebase-db
 - https://stackoverflow.com/questions/50542771/stream-builder-from-firestore-to-flutter
 - https://stackoverflow.com/questions/52613370/flutter-how-to-add-firebase-auth-user-credentials-to-new-records-firestore-do
-- https://stackoverflow.com/questions/57486330/flutter-firebase-authentication-with-google-app-crash
 - https://stackoverflow.com/questions/46554091/cloud-firestore-collection-count
-- https://stackoverflow.com/questions/67801944/delete-map-in-a-firestore-table
 
 ## 3. Video Structure
 
@@ -301,25 +286,29 @@ class Student {
   final DateTime birthday;
 
   Student({
-    this.id = '',
+    required this.id,
     required this.name,
     required this.age,
     required this.birthday,
   });
 
-  Map<String, dynamic> toJson() => {
-        'id': id,
-        'name': name,
-        'age': age,
-        'birthday': birthday,
-      };
+  Map<String, dynamic> toJson() {
+    return {
+      'id': id,
+      'name': name,
+      'age': age,
+      'birthday': birthday,
+    };
+  }
 
-  static Student fromJson(Map<String, dynamic> json) => Student(
-        id: json['id'],
-        name: json['name'],
-        age: json['age'],
-        birthday: (json['birthday'] as Timestamp).toDate(),
-      );
+  factory Student.fromJson(String id, Map<String, dynamic> json) {
+    return Student(
+      id: id,
+      name: json['name'],
+      age: json['age'],
+      birthday: (json['birthday'] as Timestamp).toDate(),
+    );
+  }
 }
 ```
 
@@ -329,14 +318,16 @@ Inside home_page.dart file:
 
 - First, let's create `studentColl` reference to use it everywhere in this file:
   ```dart
-  final studentColl = FirebaseFirestore.instance.collection('students');
+  final studentsCollection = FirebaseFirestore.instance.collection('students');
   ```
-- Before build function, let's also initialize name, age and date of birth controllers and also
-  remember to dispose them to avoid memory leaks:
+- Before build function, let's also initialize name, age and date of birth controllers and
+  fetchStudents which is stream of list of students.
   ```dart
     final nameController = TextEditingController();
     final ageController = TextEditingController();
     final dobController = TextEditingController();
+
+    late Stream<List<Student>> fetchStudents;
   
     @override
     void dispose() {
@@ -346,14 +337,28 @@ Inside home_page.dart file:
       super.dispose();
     }
   ```
+- Let's create readStudents() method which is returning stream of list of students, call this method
+  inside initstate and save the result in `fetchStudents` variable.
+  ```dart
+  Stream<List<Student>> readStudents() =>
+      studentsCollection.snapshots().map((snapshot) => snapshot.docs
+          .map((doc) => Student.fromJson(doc.id, doc.data()))
+          .toList());
+
+  @override
+  void initState() {
+    super.initState();
+    fetchStudents = readStudents();
+  }
+  ```
 - Inside scaffold, we are creating an appBar and inside body we using `StreamBuilder` of type
-  QuerySnapshot wrapped by `Column` widget. `StreamBuilder` has two required parameters stream and
+  `List<Student>` wrapped by `Column` widget. `StreamBuilder` has two required parameters stream and
   builder.
-    - For stream, we are calling snapshots() method on `studentColl` reference.
+    - For stream, we are calling fetchStudents variable.
     - For builder, we are checking if snapshot has data then return a `ListView.builder` wrapped
       by `Expanded` widget.
     - Listview builder has `itemBuilder` required property.
-    - Let's set `itemCount` property to `snapshot.data!.docs.length`.
+    - Let's set `itemCount` property to `students.length`.
     - `itemBuilder` is callback function. We are returning a `ListTile` widget
       with `leading`, `title`, and `trailing` properties.
         - Let's show the CircleAvatar in `leading`.
@@ -362,177 +367,105 @@ Inside home_page.dart file:
         - For `subtitle`, we are using `PopupMenuButton` and inside it, we are returning
           two `PopupMenuItem`s. One for editing the student and another for deleting the student.
 
-```dart
-          StreamBuilder<QuerySnapshot>(
-            stream: studentColl.snapshots(),
-            builder: (context, snapshot) {
-              if (snapshot.hasData) {
-                return Expanded(
-                  child: ListView.builder(
-                      itemCount: snapshot.data!.docs.length,
-                      itemBuilder: (context, index) {
-                        final age = snapshot.data!.docs[index]['age'];
-                        final birthday = snapshot.data!.docs[index]['birthday'];
-                        final name = snapshot.data!.docs[index]['name'];
-                        final id = snapshot.data!.docs[index].id;
-                        return ListTile(
-                          leading: CircleAvatar(
-                            child: Text(age.toString()),
-                          ),
-                          title: Text('$name `$id`'),
-                          subtitle: Text((birthday as Timestamp)
-                              .toDate()
-                              .toIso8601String()),
-                          trailing: PopupMenuButton(
-                            icon: const Icon(Icons.more_vert),
-                            itemBuilder: (BuildContext context) {
-                              return [
-                                PopupMenuItem(
-                                  value: 1,
-                                  child: ListTile(
-                                    leading: const Icon(Icons.edit),
-                                    title: const Text('Edit'),
-                                    onTap: () {
-                                      Navigator.pop(context);
-                                      editStudent(
-                                          id, name, age, birthday.toDate());
-                                    },
+  ```dart
+            StreamBuilder<List<Student>>(
+              stream: fetchStudents,
+              builder: (context, snapshot) {
+                if (snapshot.hasData) {
+                  final students = snapshot.data!;
+                  return Expanded(
+                    child: ListView.builder(
+                        itemCount: students.length,
+                        itemBuilder: (context, index) {
+                          final student = students[index];
+                          return ListTile(
+                            leading: CircleAvatar(
+                              child: Text(student.age.toString()),
+                            ),
+                            title: Text('${student.name} `${student.id}`'),
+                            subtitle: Text(student.birthday.toString()),
+                            trailing: PopupMenuButton(
+                              icon: const Icon(Icons.more_vert),
+                              itemBuilder: (BuildContext context) {
+                                return [
+                                  PopupMenuItem(
+                                    value: 1,
+                                    child: ListTile(
+                                      leading: const Icon(Icons.edit),
+                                      title: const Text('Edit'),
+                                      onTap: () {
+                                        Navigator.pop(context);
+                                        addOrUpdateSheet(
+                                          isEditMode: true,
+                                          id: student.id,
+                                          name: student.name,
+                                          age: student.age,
+                                          dob: student.birthday,
+                                        );
+                                      },
+                                    ),
                                   ),
-                                ),
-                                PopupMenuItem(
-                                  value: 2,
-                                  child: ListTile(
-                                    leading: const Icon(Icons.delete),
-                                    title: const Text('Delete'),
-                                    onTap: () {
-                                      Navigator.pop(context);
-                                      deleteStudent(id);
-                                    },
+                                  PopupMenuItem(
+                                    value: 2,
+                                    child: ListTile(
+                                      leading: const Icon(Icons.delete),
+                                      title: const Text('Delete'),
+                                      onTap: () {
+                                        Navigator.pop(context);
+                                        deleteStudent(student.id);
+                                      },
+                                    ),
                                   ),
-                                ),
-                              ];
-                            },
-                          ),
-                        );
-                      }),
-                );
-              }
-              if (snapshot.hasError) {
-                return Center(
-                  child: Text(
-                    'Something went wrong!'
-                    '\n\nhasError: ${snapshot.hasError}'
-                    '\n\nError: ${snapshot.error}'
-                    '\n\nhasData: ${snapshot.hasData}'
-                    '\n\ndata: ${snapshot.data}',
-                    style: const TextStyle(
-                      color: Colors.red,
-                      fontWeight: FontWeight.bold,
-                      fontSize: 30,
+                                ];
+                              },
+                            ),
+                          );
+                        }),
+                  );
+                }
+                if (snapshot.hasError) {
+                  return Center(
+                    child: Text(
+                      'Something went wrong!\nError: ${snapshot.error}',
+                      style: const TextStyle(
+                        color: Colors.red,
+                        fontWeight: FontWeight.bold,
+                        fontSize: 30,
+                      ),
                     ),
-                  ),
-                );
-              } else {
-                return const Center(
-                  child: CircularProgressIndicator(),
-                );
-              }
-            },
-          ),
-```
+                  );
+                } else {
+                  return const Center(child: CircularProgressIndicator());
+                }
+              },
+            ),
+  ```
 
 - After Column and inside Scaffold, I am creating `floatingActionButton` to add a new student.¬
 
 ```dart
-      floatingActionButton: FloatingActionButton(
-        onPressed: addStudent,
-        tooltip: 'Add Student',
-        child: const Icon(Icons.add),
-      ),
-```
-
-- addStudent() method:
-
-```dart
-  Future<void> addStudent() async {
-    showModalBottomSheet(
-      isScrollControlled: true,
-      isDismissible: true,
-      context: context,
-      builder: (context) => Padding(
-        padding: EdgeInsets.only(
-          top: 20,
-          left: 20,
-          right: 20,
-          bottom: MediaQuery.of(context).viewInsets.bottom + 20,
+        floatingActionButton: FloatingActionButton(
+          onPressed: () => addOrUpdateSheet(isEditMode: false),
+          tooltip: 'Add Student',
+          child: const Icon(Icons.add),
         ),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            TextField(
-              controller: nameController,
-              decoration: const InputDecoration(hintText: 'Name'),
-            ),
-            const SizedBox(height: 16),
-            TextField(
-              controller: ageController,
-              decoration: const InputDecoration(hintText: 'Age'),
-              keyboardType: TextInputType.number,
-            ),
-            const SizedBox(height: 16),
-            TextField(
-              controller: dobController,
-              decoration: const InputDecoration(hintText: 'Birthday'),
-              onTap: selectDate,
-            ),
-            const SizedBox(height: 16),
-            ElevatedButton(
-              onPressed: () {
-                studentColl.add({
-                  'name': nameController.text,
-                  'age': int.parse(ageController.text),
-                  'birthday': DateTime.parse(dobController.text),
-                }).then((value) {
-                  debugPrint('New student added/created successfully');
-                });
-                // await studentColl.doc().set({json});
-                /// Behind the scenes, .add(...) and .doc().set(...) are completely equivalent,
-                /// so you can use whichever is more convenient.
-                Navigator.pop(context);
-                ageController.clear();
-                dobController.clear();
-                nameController.clear();
-              },
-              child: const Text('Add'),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
 ```
 
-- deleteStudent() method:
+- addOrUpdateSheet() method:
 
 ```dart
-  Future<void> deleteStudent(String id) async {
-    studentColl.doc(id).delete().then((value) {
-      debugPrint('Student of id `$id` deleted successfully');
-    }).onError((error, stackTrace) {
-      debugPrint(error.toString());
-    });
-  }
-```
-
-- editStudent() method:
-
-```dart
-  Future<void> editStudent(
-      String id, String name, int age, DateTime dob) async {
-    nameController.text = name;
-    ageController.text = age.toString();
-    dobController.text = dob.toIso8601String();
+  Future<void> addOrUpdateSheet({
+    required bool isEditMode,
+    String? id,
+    String? name,
+    int? age,
+    DateTime? dob,
+  }) async {
+    if (isEditMode) {
+      nameController.text = name!;
+      ageController.text = age!.toString();
+      dobController.text = dob!.toIso8601String();
+    }
     return showModalBottomSheet(
       isScrollControlled: true,
       isDismissible: true,
@@ -567,22 +500,9 @@ Inside home_page.dart file:
             const SizedBox(height: 16),
             ElevatedButton(
               onPressed: () {
-                studentColl.doc(id).update({
-                  // 'age': ageController.text,
-                  // 'name': nameController.text,
-                  // 'birthday': dobController.text,
-                  'name': nameController.text,
-                  'age': int.parse(ageController.text),
-                  'birthday': DateTime.parse(dobController.text),
-                }).then((value) {
-                  debugPrint('Student updated/edited successfully');
-                });
-                Navigator.pop(context);
-                ageController.clear();
-                dobController.clear();
-                nameController.clear();
+                isEditMode ? updateStudent(id!) : createStudent();
               },
-              child: const Text('Update'),
+              child: isEditMode ? const Text('Update') : const Text('Create'),
             ),
             ElevatedButton(
               onPressed: () {
@@ -595,7 +515,62 @@ Inside home_page.dart file:
       ),
     );
   }
+```
 
+- updateStudent() method:
+```dart
+  void updateStudent(String id) {
+    final student = Student(
+      name: nameController.text,
+      age: int.parse(ageController.text),
+      birthday: DateTime.parse(dobController.text),
+    );
+    final json = student.toJson();
+    studentsCollection.doc(id).update(json).then((value) {
+      debugPrint('Student updated/edited successfully');
+    });
+    Navigator.pop(context);
+    clearData();
+  }
+```
+
+- createStudent() method:
+```dart
+  void createStudent() {
+    final student = Student(
+      name: nameController.text,
+      age: int.parse(ageController.text),
+      birthday: DateTime.parse(dobController.text),
+    );
+    final json = student.toJson();
+    studentsCollection.add(json).then((value) {
+      debugPrint('New student added/created successfully');
+    });
+    // await studentCollection.doc().set({json});
+    /// Behind the scenes, .add(...) and .doc().set(...) are completely equivalent,
+    /// so you can use whichever is more convenient.
+    Navigator.pop(context);
+    clearData();
+  }
+```
+- clearData() method clears the text fields text:
+```dart
+  void clearData() {
+    ageController.clear();
+    dobController.clear();
+    nameController.clear();
+  }
+```
+- deleteStudent() method:
+
+```dart
+  Future<void> deleteStudent(String id) async {
+    studentColl.doc(id).delete().then((value) {
+      debugPrint('Student deleted successfully');
+    }).onError((error, stackTrace) {
+      debugPrint(error.toString());
+    });
+  }
 ```
 
 - selectDate() method:

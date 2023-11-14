@@ -6,9 +6,7 @@ import 'firebase_options.dart';
 import 'package:flutter_firebase_crud/pages/home_page.dart';
 
 Future<void> main() async {
-  // For Firebase
   WidgetsFlutterBinding.ensureInitialized();
-  // await Firebase.initializeApp();
   await Firebase.initializeApp(
     options: DefaultFirebaseOptions.currentPlatform,
   );
@@ -24,6 +22,9 @@ class MyApp extends StatelessWidget {
         theme: ThemeData(
           colorScheme: ColorScheme.fromSeed(seedColor: Colors.deepPurple),
           useMaterial3: true,
+          appBarTheme: AppBarTheme(
+            backgroundColor: Theme.of(context).colorScheme.primary,
+          ),
         ),
         home: const MyHomePage(title: 'Flutter Firebase CRUD'),
       );
