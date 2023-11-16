@@ -20,11 +20,6 @@ class _MyHomePageState extends State<MyHomePage> {
 
   late Stream<List<Student>> fetchStudents;
 
-  Stream<List<Student>> readStudents() =>
-      studentsCollection.snapshots().map((snapshot) => snapshot.docs
-          .map((doc) => Student.fromJson(doc.id, doc.data()))
-          .toList());
-
   @override
   void initState() {
     super.initState();
@@ -41,9 +36,7 @@ class _MyHomePageState extends State<MyHomePage> {
 
   @override
   Widget build(BuildContext context) => Scaffold(
-        appBar: AppBar(
-          title: Text(widget.title),
-        ),
+        appBar: AppBar(title: Text(widget.title)),
         body: Column(
           children: [
             StreamBuilder<List<Student>>(
@@ -60,7 +53,7 @@ class _MyHomePageState extends State<MyHomePage> {
                             leading: CircleAvatar(
                               child: Text(student.age.toString()),
                             ),
-                            title: Text('${student.name} `${student.id}`'),
+                            title: Text(student.name),
                             subtitle: Text(student.birthday.toString()),
                             trailing: PopupMenuButton(
                               icon: const Icon(Icons.more_vert),
@@ -73,7 +66,7 @@ class _MyHomePageState extends State<MyHomePage> {
                                       title: const Text('Edit'),
                                       onTap: () {
                                         Navigator.pop(context);
-                                        addOrUpdateSheet(
+                                        showBottomSheet(
                                           isEditMode: true,
                                           id: student.id,
                                           name: student.name,
@@ -120,21 +113,13 @@ class _MyHomePageState extends State<MyHomePage> {
           ],
         ),
         floatingActionButton: FloatingActionButton(
-          onPressed: () => addOrUpdateSheet(isEditMode: false),
+          onPressed: () => showBottomSheet(isEditMode: false),
           tooltip: 'Add Student',
           child: const Icon(Icons.add),
         ),
       );
 
-  Future<void> deleteStudent(String id) async {
-    studentsCollection.doc(id).delete().then((value) {
-      debugPrint('Student deleted successfully');
-    }).onError((error, _) {
-      debugPrint(error.toString());
-    });
-  }
-
-  Future<void> addOrUpdateSheet({
+  Future<void> showBottomSheet({
     required bool isEditMode,
     String? id,
     String? name,
@@ -179,21 +164,31 @@ class _MyHomePageState extends State<MyHomePage> {
             ),
             const SizedBox(height: 16),
             ElevatedButton(
-              onPressed: () {
-                isEditMode ? updateStudent(id!) : createStudent();
-              },
+              onPressed: () =>
+                  isEditMode ? updateStudent(id!) : createStudent(),
               child: isEditMode ? const Text('Update') : const Text('Create'),
             ),
             ElevatedButton(
-              onPressed: () {
-                Navigator.pop(context);
-              },
+              onPressed: () => Navigator.pop(context),
               child: const Text('Cancel'),
             ),
           ],
         ),
       ),
     );
+  }
+
+  Stream<List<Student>> readStudents() =>
+      studentsCollection.snapshots().map((snapshot) => snapshot.docs
+          .map((doc) => Student.fromJson(doc.id, doc.data()))
+          .toList());
+
+  Future<void> deleteStudent(String id) async {
+    studentsCollection.doc(id).delete().then((value) {
+      debugPrint('Student deleted successfully');
+    }).onError((error, _) {
+      debugPrint(error.toString());
+    });
   }
 
   void updateStudent(String id) {
@@ -204,7 +199,7 @@ class _MyHomePageState extends State<MyHomePage> {
     );
     final json = student.toJson();
     studentsCollection.doc(id).update(json).then((value) {
-      debugPrint('Student updated/edited successfully');
+      debugPrint('Student updated successfully');
     });
     Navigator.pop(context);
     clearData();
@@ -232,10 +227,11 @@ class _MyHomePageState extends State<MyHomePage> {
 
   Future<void> selectDate() async {
     DateTime? picked = await showDatePicker(
-        context: context,
-        initialDate: DateTime.now(),
-        firstDate: DateTime(2000),
-        lastDate: DateTime.now());
+      context: context,
+      initialDate: DateTime.now(),
+      firstDate: DateTime(2000),
+      lastDate: DateTime.now(),
+    );
     if (picked != null) {
       setState(() => dobController.text = picked.toString());
     }
