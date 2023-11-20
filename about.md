@@ -338,13 +338,8 @@ Inside home_page.dart file:
     }
   ```
 - Let's create readStudents() method which is returning stream of list of students, call this method
-  inside initstate and save the result in `fetchStudents` variable.
+  inside initState and save the result in `fetchStudents` variable.
   ```dart
-  Stream<List<Student>> readStudents() =>
-      studentsCollection.snapshots().map((snapshot) => snapshot.docs
-          .map((doc) => Student.fromJson(doc.id, doc.data()))
-          .toList());
-
   @override
   void initState() {
     super.initState();
@@ -382,7 +377,7 @@ Inside home_page.dart file:
                             leading: CircleAvatar(
                               child: Text(student.age.toString()),
                             ),
-                            title: Text('${student.name} `${student.id}`'),
+                            title: Text(student.name),
                             subtitle: Text(student.birthday.toString()),
                             trailing: PopupMenuButton(
                               icon: const Icon(Icons.more_vert),
@@ -395,7 +390,7 @@ Inside home_page.dart file:
                                       title: const Text('Edit'),
                                       onTap: () {
                                         Navigator.pop(context);
-                                        addOrUpdateSheet(
+                                        showBottomSheet(
                                           isEditMode: true,
                                           id: student.id,
                                           name: student.name,
@@ -439,22 +434,24 @@ Inside home_page.dart file:
                 }
               },
             ),
+          ],
+        ),
   ```
 
 - After Column and inside Scaffold, I am creating `floatingActionButton` to add a new student.¬
 
 ```dart
         floatingActionButton: FloatingActionButton(
-          onPressed: () => addOrUpdateSheet(isEditMode: false),
+          onPressed: () => showBottomSheet(isEditMode: false),
           tooltip: 'Add Student',
           child: const Icon(Icons.add),
         ),
 ```
 
-- addOrUpdateSheet() method:
+- showBottomSheet() method:
 
 ```dart
-  Future<void> addOrUpdateSheet({
+  Future<void> showBottomSheet({
     required bool isEditMode,
     String? id,
     String? name,
@@ -499,15 +496,12 @@ Inside home_page.dart file:
             ),
             const SizedBox(height: 16),
             ElevatedButton(
-              onPressed: () {
-                isEditMode ? updateStudent(id!) : createStudent();
-              },
+              onPressed: () =>
+                  isEditMode ? updateStudent(id!) : createStudent(),
               child: isEditMode ? const Text('Update') : const Text('Create'),
             ),
             ElevatedButton(
-              onPressed: () {
-                Navigator.pop(context);
-              },
+              onPressed: () => Navigator.pop(context),
               child: const Text('Cancel'),
             ),
           ],
@@ -517,7 +511,18 @@ Inside home_page.dart file:
   }
 ```
 
+- readStudent() method:
+
+```dart
+  Stream<List<Student>> readStudents() =>
+      studentsCollection.snapshots().map((snapshot) => snapshot.docs
+          .map((doc) => Student.fromJson(doc.id, doc.data()))
+          .toList());
+
+```
+
 - updateStudent() method:
+
 ```dart
   void updateStudent(String id) {
     final student = Student(
@@ -527,7 +532,7 @@ Inside home_page.dart file:
     );
     final json = student.toJson();
     studentsCollection.doc(id).update(json).then((value) {
-      debugPrint('Student updated/edited successfully');
+      debugPrint('Student updated successfully');
     });
     Navigator.pop(context);
     clearData();
@@ -535,6 +540,7 @@ Inside home_page.dart file:
 ```
 
 - createStudent() method:
+
 ```dart
   void createStudent() {
     final student = Student(
@@ -553,7 +559,9 @@ Inside home_page.dart file:
     clearData();
   }
 ```
+
 - clearData() method clears the text fields text:
+
 ```dart
   void clearData() {
     ageController.clear();
@@ -561,6 +569,7 @@ Inside home_page.dart file:
     nameController.clear();
   }
 ```
+
 - deleteStudent() method:
 
 ```dart
@@ -578,14 +587,13 @@ Inside home_page.dart file:
 ```dart
   Future<void> selectDate() async {
     DateTime? picked = await showDatePicker(
-        context: context,
-        initialDate: DateTime.now(),
-        firstDate: DateTime(2000),
-        lastDate: DateTime.now());
+      context: context,
+      initialDate: DateTime.now(),
+      firstDate: DateTime(2000),
+      lastDate: DateTime.now(),
+    );
     if (picked != null) {
-      setState(
-        () => dobController.text = picked.toString(),
-      );
+      setState(() => dobController.text = picked.toString());
     }
   }
 ```
