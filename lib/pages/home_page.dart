@@ -44,10 +44,6 @@ class _MyHomePageState extends State<MyHomePage> {
               builder: (context, snapshot) {
                 if (snapshot.hasData) {
                   final students = snapshot.data!;
-                  // print(studentsCollection.doc().get());
-                  // final hitherehowareyou = studentsCollection.doc().get();
-                  // // final b= hitherehowareyou.re
-                  // final a = snapshot.data[]
                   return Expanded(
                     child: ListView.builder(
                         itemCount: students.length,
@@ -69,15 +65,10 @@ class _MyHomePageState extends State<MyHomePage> {
                                       leading: const Icon(Icons.edit),
                                       title: const Text('Edit'),
                                       onTap: () {
-                                        // print('student.id ${student.id}');
                                         Navigator.pop(context);
                                         showBottomSheet(
                                           isEditMode: true,
                                           student: student,
-                                          // id: student.id,
-                                          // name: student.name,
-                                          // age: student.age,
-                                          // dob: student.birthday,
                                         );
                                       },
                                     ),
@@ -88,9 +79,8 @@ class _MyHomePageState extends State<MyHomePage> {
                                       leading: const Icon(Icons.delete),
                                       title: const Text('Delete'),
                                       onTap: () {
-                                        // print('student.id ${student.id}');
                                         Navigator.pop(context);
-                                        deleteStudent();
+                                        deleteStudent(student.id);
                                       },
                                     ),
                                   ),
@@ -168,7 +158,8 @@ class _MyHomePageState extends State<MyHomePage> {
             ),
             const SizedBox(height: 16),
             ElevatedButton(
-              onPressed: () => isEditMode ? updateStudent() : createStudent(),
+              onPressed: () =>
+                  isEditMode ? updateStudent(student!.id) : createStudent(),
               child: isEditMode ? const Text('Update') : const Text('Create'),
             ),
             ElevatedButton(
@@ -182,27 +173,26 @@ class _MyHomePageState extends State<MyHomePage> {
   }
 
   Stream<List<Student>> readStudents() =>
-      studentsCollection.snapshots().map((snapshot) => snapshot.docs.map((doc) {
-            print('studentId: ${doc.reference.id}');
-            return Student.fromJson(doc.data());
-          }).toList());
+      studentsCollection.snapshots().map((snapshot) => snapshot.docs
+          .map((doc) => Student.fromJson(doc.id, doc.data()))
+          .toList());
 
-  Future<void> deleteStudent() async {
-    studentsCollection.doc().delete().then((value) {
+  Future<void> deleteStudent(String id) async {
+    studentsCollection.doc(id).delete().then((value) {
       debugPrint('Student deleted successfully');
     }).onError((error, _) {
       debugPrint(error.toString());
     });
   }
 
-  void updateStudent() {
+  void updateStudent(String id) {
     final student = Student(
       name: nameController.text,
       age: int.parse(ageController.text),
       birthday: DateTime.parse(dobController.text),
     );
     final json = student.toJson();
-    studentsCollection.doc().update(json).then((value) {
+    studentsCollection.doc(id).update(json).then((value) {
       debugPrint('Student updated successfully');
     });
     Navigator.pop(context);
